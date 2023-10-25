@@ -1,0 +1,118 @@
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+#
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Dart.gitlab-ci.yml
+
+# https://hub.docker.com/_/dart
+image: dart:stable
+
+stages:
+  - build
+  - test
+  - deploy
+
+default:
+  timeout: 5 minutes
+  tags:
+    - caching # To use the runner marked as cache-supporting.
+
+.setup-dart-environment:
+  # Define commands that need to be executed before each job.
+  before_script:
+    # Set PUB_CACHE either here or in the CI/CD Settings if you have multiple
+    # jobs that use dart commands.
+    # PUB_CACHE is used by the `dart pub` command, it needs to be set so package
+    # dependencies are stored at the project-level for CI/CD operations.
+    - export PUB_CACHE=".pub-cache"
+    - export PATH="$PATH:$HOME/$PUB_CACHE/bin"
+    - dart --disable-analytics
+
+# Cache generated files and plugins between builds.
+.upload-cache:
+  cache:
+    key:
+      files:
+        - pubspec.yaml
+        - pubspec.lock
+    when: 'on_success'
+    paths:
+      - .pub-cache/bin/
+      - .pub-cache/global_packages/
+      - .pub-cache/hosted/
+      - .dart_tool/
+
+# Cache downloaded dependencies and plugins between builds.
+# To keep cache across branches add 'key: "$CI_JOB_NAME"'
+.download-cache:
+  cache:
+    key:
+      files:
+        - pubspec.yaml
+        - pubspec.lock
+    paths:
+      - .dart_tool/
+    policy: pull
+
+install-dependencies:
+  stage: .pre
+  extends:
+    - .setup-dart-environment
+    - .upload-cache
+  script:
+    - dart pub get --no-precompile
+
+build:
+  stage: build
+  needs:
+    - install-dependencies
+  extends:
+    - .setup-dart-environment
+    - .upload-cache
+  script:
+    - dart pub get --offline --precompile
+
+unit-test:
+  stage: test
+  needs:
+    - build
+  extends:
+    - .setup-dart-environment
+    - .download-cache
+  script:
+    - dart test --platform vm --timeout 30s --concurrency=$(nproc) --test-randomize-ordering-seed=random --reporter=expanded
+
+lint-test:
+  stage: test
+  needs:
+    - install-dependencies
+  extends:
+    - .setup-dart-environment
+    - .download-cache
+  script:
+    - dart analyze .
+
+format-test:
+  stage: test
+  needs:
+    - install-dependencies
+  extends:
+    - .setup-dart-environment
+    - .download-cache
+  script:
+    - dart format --set-exit-if-changed bin/ lib/ test/
+  
+pages:
+  stage: deploy
+  extends:
+    - .setup-dart-environment
+    - .download-cache
+  script:
+    - dart doc --output=public --validate-links
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
