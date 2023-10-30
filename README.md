@@ -1,39 +1,59 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
-
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages). 
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages). 
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+This package provides the value type [EmailAddress] to have a typed
+representation of the e-mail address with the encapsulated validation.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+1. Install the package as a dependency, running the command in the shell:
+
+    ```sh
+    dart pub add email_address
+    ```
+
+2. Import the library:
+
+    ```dart
+   import 'package:email_address/email_address.dart';
+    ```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+Parsing a `EmailAddress` from string:
 
 ```dart
-const like = 'sample';
+try {
+  final address = EmailAddress.parse('john@exmaple.com');
+} on EmailAddressFormatException {
+  // ...
+}
 ```
 
-## Additional information
+Alternatively, you can use `.parseOrNull()`:
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+```dart
+assert(EmailAddress.parseOrNull('john@exmaple.com') != null);
+assert(EmailAddress.parseOrNull('not a e-mail address') == null);
+```
+
+When you need to, just check the format of the string without creating
+an instance of the `EmailAddress`:
+
+```dart
+assert(EmailAddress.validFormat('john@example.com') == true);
+assert(EmailAddress.validFormat('not a e-mail address') == false);
+```
+
+Make case-insensitive check for equality of the addresses:
+
+```dart
+final address = EmailAddress.parse('john@example.com');
+final sameAddressInUpperCase = EmailAddress.parse('JOHN@EXAMPLE.COM');
+
+assert(address == sameAddressInUpperCase);
+```
+
+Convert the `EmailAddress` back to string using `.toString()` method as expected:
+
+```dart
+final address = EmailAddress.parse('JohnDoe@example.com');
+assert('JohnDoe@example.com' == address.toString());
+```

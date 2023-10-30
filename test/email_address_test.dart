@@ -20,8 +20,94 @@
 
 import 'package:test/test.dart';
 
+import 'package:email_address/email_address.dart';
+
 void main() {
-  test('Example', () {
-    expect('Example', equals('Example'));
+  // EmailAddress tests
+  //----------------------------------------------------------------------------
+
+  group('EmailAddress', () {
+    const validAddressExamples = {
+      'valid address in English': 'john@example.com',
+      'valid address in Russian': 'джон@пример.ком',
+    };
+
+    const invalidAddressExamples = {
+      'empty string': '',
+      'invalid format': 'not a e-mail address',
+      'address with the top-level domain': 'john@localhost',
+    };
+
+    group('parsing and validation:', () {
+      validAddressExamples.forEach((exampleName, rawAddress) {
+        test('.parse() succeeds for $exampleName', () {
+          expect(() => EmailAddress.parse(rawAddress), returnsNormally);
+        });
+        test('.parseOrNull() succeeds for $exampleName', () {
+          expect(EmailAddress.parseOrNull(rawAddress), isNotNull);
+        });
+        test('.validFormat() returns true for $exampleName', () {
+          expect(EmailAddress.validFormat(rawAddress), isTrue);
+        });
+      });
+
+      invalidAddressExamples.forEach((exampleName, rawAddress) {
+        test('.parse() throws for $exampleName', () {
+          expect(() => EmailAddress.parse(rawAddress),
+              throwsA(isA<EmailAddressFormatException>()));
+        });
+        test('.parseOrNull() returns null for $exampleName', () {
+          expect(EmailAddress.parseOrNull(rawAddress), isNull);
+        });
+        test('.validFormat() returns false for $exampleName', () {
+          expect(EmailAddress.validFormat(rawAddress), isFalse);
+        });
+      });
+    });
+
+    test('.toString()', () {
+      final addressString = 'John@Exmaple.com';
+      final addressValue = EmailAddress.parseOrNull(addressString)!;
+
+      expect(addressValue.toString(), equals(addressString));
+    });
+
+    test('==()', () {
+      final address = EmailAddress.parseOrNull('john@example.com')!;
+
+      expect(address == address, isTrue);
+      expect(address == EmailAddress.parseOrNull('john@example.com'), isTrue);
+
+      expect(address == EmailAddress.parseOrNull('JOHN@EXAMPLE.COM'), isTrue);
+      expect(EmailAddress.parseOrNull('JOHN@EXAMPLE.COM') == address, isTrue);
+
+      expect(address == EmailAddress.parseOrNull('john@another.com'), isFalse);
+      expect(
+          address == EmailAddress.parseOrNull('thomas@example.com'), isFalse);
+    });
+
+    test('.hashCode', () {
+      final address = EmailAddress.parseOrNull('john@example.com')!;
+      final sameAddress = EmailAddress.parseOrNull('john@example.com')!;
+      final sameAddressUppercase =
+          EmailAddress.parseOrNull('JOHN@EXAMPLE.COM')!;
+
+      expect(address.hashCode, equals(sameAddress.hashCode));
+      expect(address.hashCode, equals(sameAddressUppercase.hashCode),
+          reason: "Case should not affect hash code calculation.");
+    });
+  });
+
+  // EmailAddressFormatException tests
+  //----------------------------------------------------------------------------
+
+  group('EmailAddressFormatException', () {
+    test('.of() constructor', () {
+      final exception = EmailAddressFormatException.of('invalid string');
+
+      expect(exception, isA<FormatException>());
+      expect(exception.message, equals('Invalid e-mail address format.'));
+      expect(exception.source, equals('invalid string'));
+    });
   });
 }
