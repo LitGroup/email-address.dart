@@ -2,17 +2,13 @@
 image: dart:stable
 
 stages:
-  - build
   - test
   - deploy
 
-default:
+.setup:
   timeout: 5 minutes
   tags:
-    - caching # To use the runner marked as cache-supporting.
-
-.setup-dart-environment:
-  # Define commands that need to be executed before each job.
+    - caching
   before_script:
     # Set PUB_CACHE either here or in the CI/CD Settings if you have multiple
     # jobs that use dart commands.
@@ -21,102 +17,54 @@ default:
     - export PUB_CACHE=".pub-cache"
     - export PATH="$PATH:$HOME/$PUB_CACHE/bin"
     - dart --disable-analytics
+    # Install dependencies.
+    - dart pub get
 
 # Cache generated files and plugins between builds.
 .upload-cache:
   cache:
-    key:
-      files:
-        - pubspec.yaml
-        - pubspec.lock
-    when: 'on_success'
+    key: pub-cache-$CI_COMMIT_REF_SLUG
     paths:
       - .pub-cache/bin/
       - .pub-cache/global_packages/
       - .pub-cache/hosted/
-      - .dart_tool/
 
 # Cache downloaded dependencies and plugins between builds.
 # To keep cache across branches add 'key: "$CI_JOB_NAME"'
 .download-cache:
   cache:
-    key:
-      files:
-        - pubspec.yaml
-        - pubspec.lock
+    key: pub-cache-$CI_COMMIT_REF_SLUG
     paths:
-      - .dart_tool/
+      - .pub-cache/bin/
+      - .pub-cache/global_packages/
+      - .pub-cache/hosted/
     policy: pull
 
-install-dependencies:
-  stage: .pre
-  timeout: 5 minutes
+test:
   extends:
-    - .setup-dart-environment
     - .upload-cache
-  script:
-    - dart pub get --no-precompile
-
-build:
-  stage: build
-  needs:
-    - install-dependencies
-  extends:
-    - .setup-dart-environment
-    - .upload-cache
-  script:
-    - dart pub get --offline --precompile
-
-unit-test:
-  stage: test
-  needs:
-    - build
-  extends:
-    - .setup-dart-environment
-    - .download-cache
-  script:
-    - dart test --platform vm --timeout 30s --concurrency=$(nproc) --test-randomize-ordering-seed=random --reporter=expanded
-
-lint-test:
-  stage: test
-  needs:
-    - install-dependencies
-  extends:
-    - .setup-dart-environment
-    - .download-cache
+    - .setup
   script:
     - dart analyze .
-
-format-test:
-  stage: test
-  needs:
-    - install-dependencies
-  extends:
-    - .setup-dart-environment
-    - .download-cache
-  script:
+    - >
+      dart test
+      --platform vm
+      --timeout 30s
+      --concurrency=$(nproc)
+      --test-randomize-ordering-seed=random
+      --reporter=expanded
     - dart format --set-exit-if-changed bin/ lib/ test/ example/
-
-# Check that examples are executable:
-example-test:
-  stage: test
-  needs:
-    - build
-  extends:
-    - .setup-dart-environment
-    - .download-cache
-  script:
     - dart run example/*.dart
 
 pages:
   stage: deploy
   extends:
-    - .setup-dart-environment
     - .download-cache
+    - .setup
   script:
     - dart doc --output=public --validate-links
   artifacts:
     paths:
       - public
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
