@@ -1,4 +1,4 @@
-This package provides the value type [EmailAddress] to have a typed
+This package provides the value type `EmailAddress` to have a typed
 representation of the e-mail address with the encapsulated validation.
 
 ## Getting started
