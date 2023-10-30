@@ -9,6 +9,7 @@ stages:
   timeout: 5 minutes
   tags:
     - caching
+  resource_group: $CI_COMMIT_REF_SLUG
   before_script:
     # Set PUB_CACHE either here or in the CI/CD Settings if you have multiple
     # jobs that use dart commands.
