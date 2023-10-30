@@ -1,7 +1,7 @@
 name: email_address
-description: Provides e-mail address value type
-version: 0.0.0
-publish_to: none
+description: Provides a e-mail address value type.
+version: 1.0.0
+repository: https://github.com/LitGroup/email-address.dart
 
 environment:
   sdk: ^3.1.3
